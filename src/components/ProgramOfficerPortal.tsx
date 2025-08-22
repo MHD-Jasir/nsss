@@ -5,6 +5,7 @@ import { RegisteredStudent, Coordinator, StudentReport } from '../types';
 interface ProgramOfficerPortalProps {
   students: RegisteredStudent[];
   coordinators: Coordinator[];
+  departments: import('../types').Department[];
   programs: import('../types').Program[];
   onAddStudent: (student: Omit<RegisteredStudent, 'id' | 'createdAt'>) => void;
   onAddCoordinator: (coordinator: Omit<Coordinator, 'id' | 'createdAt'>) => void;
@@ -14,6 +15,9 @@ interface ProgramOfficerPortalProps {
   onUpdateOfficerPassword: (newPassword: string) => void;
   onEditStudent: (id: string, updates: { name: string; department: string; password: string }) => void;
   onEditCoordinator: (id: string, updates: { name: string; department: string; password: string }) => void;
+  onAddDepartment: (name: string) => void;
+  onEditDepartment: (id: string, newName: string) => void;
+  onToggleDepartment: (id: string) => void;
   studentReports: Record<string, StudentReport>;
   onAddStudentActivity: (
     studentId: string,
@@ -29,6 +33,7 @@ interface ProgramOfficerPortalProps {
 export const ProgramOfficerPortal: React.FC<ProgramOfficerPortalProps> = ({
   students,
   coordinators,
+  departments,
   programs,
   onAddStudent,
   onAddCoordinator,
@@ -38,29 +43,37 @@ export const ProgramOfficerPortal: React.FC<ProgramOfficerPortalProps> = ({
   onUpdateOfficerPassword,
   onEditStudent,
   onEditCoordinator,
+  onAddDepartment,
+  onEditDepartment,
+  onToggleDepartment,
   studentReports,
   onAddStudentActivity,
   onEditStudentActivity,
 }) => {
-  const [activeTab, setActiveTab] = useState<'students' | 'coordinators'>('students');
+  const [activeTab, setActiveTab] = useState<'students' | 'coordinators' | 'departments'>('students');
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showPasswords, setShowPasswords] = useState<{[key: string]: boolean}>({});
   const [showSettings, setShowSettings] = useState(false);
   const [editingStudent, setEditingStudent] = useState<RegisteredStudent | null>(null);
   const [editingCoordinator, setEditingCoordinator] = useState<Coordinator | null>(null);
-  const [editForm, setEditForm] = useState({ name: '', department: '', password: '' });
+  const [editForm, setEditForm] = useState({ name: '', department: '', password: '', profileImageUrl: '' as string | undefined });
   const [reportStudentId, setReportStudentId] = useState<string | null>(null);
   const [showActivityForm, setShowActivityForm] = useState(false);
   const [activityForm, setActivityForm] = useState({ badge: 'green' as 'green' | 'yellow', title: '', content: '' });
   const [editingActivityId, setEditingActivityId] = useState<string | null>(null);
+  
+  // Department management state
+  const [showDepartmentForm, setShowDepartmentForm] = useState(false);
+  const [editingDepartment, setEditingDepartment] = useState<import('../types').Department | null>(null);
+  const [departmentForm, setDepartmentForm] = useState({ name: '' });
 
   const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (editingStudent) {
-      onEditStudent(editingStudent.id, editForm);
+      onEditStudent(editingStudent.id, { name: editForm.name, department: editForm.department, password: editForm.password });
       setEditingStudent(null);
-      setEditForm({ name: '', department: '', password: '' });
+      setEditForm({ name: '', department: '', password: '', profileImageUrl: '' });
       return;
     }
     if (editingCoordinator) {
@@ -72,9 +85,11 @@ export const ProgramOfficerPortal: React.FC<ProgramOfficerPortalProps> = ({
   };
   
   const [studentForm, setStudentForm] = useState({
+    id: '',
     name: '',
     department: '',
     password: '',
+    profileImageUrl: '' as string | undefined,
   });
   
   const [coordinatorForm, setCoordinatorForm] = useState({
@@ -89,24 +104,31 @@ export const ProgramOfficerPortal: React.FC<ProgramOfficerPortalProps> = ({
     confirmPassword: '',
   });
 
-  const generateStudentId = (): string => {
-    let id: string;
-    do {
-      id = Math.floor(100 + Math.random() * 900).toString();
-    } while (students.some(s => s.id === id));
-    return id;
+  const ensureUniqueId = (candidate: string): boolean => {
+    return !students.some(s => s.id.toLowerCase() === candidate.toLowerCase());
   };
 
 
 
   const handleStudentSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!studentForm.id) {
+      alert('Please enter a custom ID (letters and numbers).');
+      return;
+    }
+    if (!ensureUniqueId(studentForm.id)) {
+      alert('This ID is already in use. Please choose another.');
+      return;
+    }
     const newStudent = {
-      ...studentForm,
-      id: generateStudentId(),
+      id: studentForm.id,
+      name: studentForm.name,
+      department: studentForm.department,
+      password: studentForm.password,
+      profileImageUrl: studentForm.profileImageUrl || undefined,
     };
-    onAddStudent(newStudent);
-    setStudentForm({ name: '', department: '', password: '' });
+    onAddStudent(newStudent as any);
+    setStudentForm({ id: '', name: '', department: '', password: '', profileImageUrl: '' });
     setShowForm(false);
   };
 
@@ -175,6 +197,25 @@ export const ProgramOfficerPortal: React.FC<ProgramOfficerPortalProps> = ({
     alert('Password updated successfully!');
   };
 
+  // Department management functions
+  const handleDepartmentSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editingDepartment) {
+      onEditDepartment(editingDepartment.id, departmentForm.name);
+      setEditingDepartment(null);
+    } else {
+      onAddDepartment(departmentForm.name);
+    }
+    setDepartmentForm({ name: '' });
+    setShowDepartmentForm(false);
+  };
+
+  const handleEditDepartment = (department: import('../types').Department) => {
+    setEditingDepartment(department);
+    setDepartmentForm({ name: department.name });
+    setShowDepartmentForm(true);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -220,6 +261,18 @@ export const ProgramOfficerPortal: React.FC<ProgramOfficerPortalProps> = ({
               <div className="flex items-center justify-center space-x-1 sm:space-x-2">
                 <User size={18} className="sm:w-5 sm:h-5" />
                 <span className="text-sm sm:text-base">Coordinators ({coordinators.length})</span>
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab('departments')}
+              className={`flex-1 px-3 sm:px-6 py-4 text-center font-medium transition-colors ${
+                activeTab === 'departments'
+                  ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-700'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <div className="flex items-center justify-center space-x-1 sm:space-x-2">
+                <span className="text-sm sm:text-base">Departments ({departments.filter(d => d.isActive).length})</span>
               </div>
             </button>
           </div>
@@ -270,6 +323,16 @@ export const ProgramOfficerPortal: React.FC<ProgramOfficerPortalProps> = ({
                             <h4 className="font-semibold text-gray-900">{student.name}</h4>
                           </div>
                           <div className="text-sm text-gray-600 space-y-1">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200">
+                                {student.profileImageUrl ? (
+                                  <img src={student.profileImageUrl} alt={student.name} className="w-full h-full object-cover" />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">No Photo</div>
+                                )}
+                              </div>
+                              <span className="text-gray-700">Profile</span>
+                            </div>
                             <p>Department: {student.department}</p>
                             <div className="flex items-center space-x-2">
                               <span>Password:</span>
@@ -300,7 +363,7 @@ export const ProgramOfficerPortal: React.FC<ProgramOfficerPortalProps> = ({
                           <button
                             onClick={() => {
                               setEditingStudent(student);
-                              setEditForm({ name: student.name, department: student.department, password: student.password });
+                              setEditForm({ name: student.name, department: student.department, password: student.password, profileImageUrl: student.profileImageUrl });
                             }}
                             className="text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition-colors"
                             title="Edit student"
@@ -411,6 +474,71 @@ export const ProgramOfficerPortal: React.FC<ProgramOfficerPortalProps> = ({
                 )}
               </div>
             )}
+
+            {/* Departments Tab */}
+            {activeTab === 'departments' && (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Manage Departments</h3>
+                  <button
+                    onClick={() => {
+                      setEditingDepartment(null);
+                      setDepartmentForm({ name: '' });
+                      setShowDepartmentForm(true);
+                    }}
+                    className="bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-800 flex items-center gap-2"
+                  >
+                    <Plus size={18} /> Add Department
+                  </button>
+                </div>
+                
+                {departments.length === 0 ? (
+                  <div className="text-center py-12">
+                    <p className="text-xl text-gray-500">No departments found</p>
+                    <p className="text-gray-400">Click "Add Department" to get started</p>
+                  </div>
+                ) : (
+                  <div className="grid gap-4">
+                    {departments.map((department) => (
+                      <div key={department.id} className="bg-gray-50 p-4 rounded-lg flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+                            department.isActive
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-red-100 text-red-700'
+                          }`}>
+                            {department.isActive ? 'Active' : 'Inactive'}
+                          </div>
+                          <h4 className="font-semibold text-gray-900">{department.name}</h4>
+                          <span className="text-sm text-gray-500">
+                            {students.filter(s => s.department === department.name).length} students
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleEditDepartment(department)}
+                            className="text-blue-600 hover:bg-blue-100 p-2 rounded-lg transition-colors"
+                            title="Edit department"
+                          >
+                            <Settings size={18} />
+                          </button>
+                          <button
+                            onClick={() => onToggleDepartment(department.id)}
+                            className={`px-3 py-2 rounded-lg transition-colors text-sm ${
+                              department.isActive
+                                ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                                : 'bg-green-100 text-green-700 hover:bg-green-200'
+                            }`}
+                          >
+                            {department.isActive ? 'Deactivate' : 'Activate'}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -518,6 +646,19 @@ export const ProgramOfficerPortal: React.FC<ProgramOfficerPortalProps> = ({
                 {activeTab === 'students' ? (
                   <form onSubmit={handleStudentSubmit} className="space-y-4">
                     <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Custom Student ID</label>
+                      <input
+                        type="text"
+                        required
+                        pattern="[A-Za-z0-9_-]+"
+                        value={studentForm.id}
+                        onChange={(e) => setStudentForm({ ...studentForm, id: e.target.value })}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="e.g., CS24-001"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Letters, numbers, hyphen or underscore allowed.</p>
+                    </div>
+                    <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Student Name</label>
                       <input
                         type="text"
@@ -530,13 +671,26 @@ export const ProgramOfficerPortal: React.FC<ProgramOfficerPortalProps> = ({
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Department</label>
-                      <input
-                        type="text"
+                      <select
                         required
                         value={studentForm.department}
                         onChange={(e) => setStudentForm({ ...studentForm, department: e.target.value })}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Enter department"
+                      >
+                        <option value="">Select a department</option>
+                        {departments.filter(d => d.isActive).map(dept => (
+                          <option key={dept.id} value={dept.name}>{dept.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Profile Picture (optional)</label>
+                      <input
+                        type="url"
+                        value={studentForm.profileImageUrl || ''}
+                        onChange={(e) => setStudentForm({ ...studentForm, profileImageUrl: e.target.value })}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Paste image URL or leave blank"
                       />
                     </div>
                     <div>
@@ -582,14 +736,17 @@ export const ProgramOfficerPortal: React.FC<ProgramOfficerPortalProps> = ({
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Department</label>
-                      <input
-                        type="text"
+                      <select
                         required
                         value={coordinatorForm.department}
                         onChange={(e) => setCoordinatorForm({ ...coordinatorForm, department: e.target.value })}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Enter department"
-                      />
+                      >
+                        <option value="">Select a department</option>
+                        {departments.filter(d => d.isActive).map(dept => (
+                          <option key={dept.id} value={dept.name}>{dept.name}</option>
+                        ))}
+                      </select>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
@@ -662,14 +819,17 @@ export const ProgramOfficerPortal: React.FC<ProgramOfficerPortalProps> = ({
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Department</label>
-                    <input
-                      type="text"
+                    <select
                       required
                       value={editForm.department}
                       onChange={(e) => setEditForm({ ...editForm, department: e.target.value })}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Enter department"
-                    />
+                    >
+                      <option value="">Select a department</option>
+                      {departments.filter(d => d.isActive).map(dept => (
+                        <option key={dept.id} value={dept.name}>{dept.name}</option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
@@ -680,6 +840,16 @@ export const ProgramOfficerPortal: React.FC<ProgramOfficerPortalProps> = ({
                       onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       placeholder="Enter password"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Profile Picture URL</label>
+                    <input
+                      type="url"
+                      value={editForm.profileImageUrl || ''}
+                      onChange={(e) => setEditForm({ ...editForm, profileImageUrl: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Paste image URL"
                     />
                   </div>
                   <div className="flex justify-end space-x-3 pt-4">
@@ -700,6 +870,67 @@ export const ProgramOfficerPortal: React.FC<ProgramOfficerPortalProps> = ({
                     >
                       <Save size={16} />
                       <span>Save Changes</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Department Form Modal */}
+        {showDepartmentForm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl max-w-md w-full mx-4">
+              <div className="p-6 border-b border-gray-200">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-bold text-gray-900">
+                    {editingDepartment ? 'Edit Department' : 'Add New Department'}
+                  </h3>
+                  <button 
+                    onClick={() => {
+                      setShowDepartmentForm(false);
+                      setEditingDepartment(null);
+                      setDepartmentForm({ name: '' });
+                    }}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
+              </div>
+              
+              <div className="p-6">
+                <form onSubmit={handleDepartmentSubmit} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Department Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={departmentForm.name}
+                      onChange={(e) => setDepartmentForm({ name: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Enter department name"
+                    />
+                  </div>
+                  <div className="flex justify-end space-x-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowDepartmentForm(false);
+                        setEditingDepartment(null);
+                        setDepartmentForm({ name: '' });
+                      }}
+                      className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="bg-blue-700 text-white px-6 py-2 rounded-lg hover:bg-blue-800 transition-colors flex items-center space-x-2"
+                    >
+                      <Save size={16} />
+                      <span>{editingDepartment ? 'Update Department' : 'Add Department'}</span>
                     </button>
                   </div>
                 </form>

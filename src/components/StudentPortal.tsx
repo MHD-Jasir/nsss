@@ -54,10 +54,19 @@ export const StudentPortal: React.FC<StudentPortalProps> = ({ programs, currentS
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Student Portal</h1>
-          <p className="text-gray-600">Welcome, {currentStudent.name} (ID: {currentStudent.id})</p>
-          <p className="text-sm text-gray-500">{currentStudent.department}</p>
+        <div className="mb-8 flex items-center gap-4">
+          <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
+            {currentStudent.profileImageUrl ? (
+              <img src={currentStudent.profileImageUrl} alt={currentStudent.name} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-gray-500 text-sm">No Photo</div>
+            )}
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-1">Student Portal</h1>
+            <p className="text-gray-600">Welcome, {currentStudent.name} (ID: {currentStudent.id})</p>
+            <p className="text-sm text-gray-500">{currentStudent.department}</p>
+          </div>
         </div>
 
         {/* Stats Cards */}

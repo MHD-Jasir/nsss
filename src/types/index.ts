@@ -24,11 +24,12 @@ export interface Student {
 
 // New interfaces for the authentication system
 export interface RegisteredStudent {
-  id: string; // 3-digit ID
+  id: string; // Custom alphanumeric ID
   name: string;
   department: string;
   password: string;
   createdAt: string;
+  profileImageUrl?: string; // Optional profile picture
 }
 
 export interface Coordinator {
@@ -73,4 +74,38 @@ export interface CoordinatedProgram {
 export interface StudentReport {
   activities: StudentExtraActivity[];
   coordinatedPrograms: CoordinatedProgram[]; // Programs where this student is a coordinator
+}
+
+// Department management
+export interface Department {
+  id: string;
+  name: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+// STORIES gallery types
+export type MediaType = 'image' | 'video';
+
+export interface StoryMediaItem {
+  id: string;
+  type: MediaType;
+  url: string;
+  title?: string;
+  createdAt: string;
+}
+
+export interface StoryAlbum {
+  id: string;
+  name: string; // e.g., program folder name
+  media: StoryMediaItem[];
+  createdAt: string;
+}
+
+export interface StoryBatch {
+  id: string;
+  name: string; // e.g., 2024-25 Batch
+  albums: StoryAlbum[];
+  featuredMediaIds: string[]; // selected for top slider
+  createdAt: string;
 }

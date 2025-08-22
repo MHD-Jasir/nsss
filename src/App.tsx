@@ -6,11 +6,12 @@ import { StudentPortal } from './components/StudentPortal';
 import { ProgramOfficerPortal } from './components/ProgramOfficerPortal';
 import { LoginPage } from './components/LoginPage';
 import { ProgramsPage } from './components/ProgramsPage';
+import { StoryBatch, StoryAlbum, StoryMediaItem } from './types';
 import { mockPrograms } from './data/mockData';
-import { Program, RegisteredStudent, Coordinator, StudentReport } from './types';
+import { Program, RegisteredStudent, Coordinator, StudentReport, Department } from './types';
 
 function App() {
-  const [currentView, setCurrentView] = useState<'home' | 'programs' | 'login' | 'student' | 'coordinator' | 'officer'>('home');
+  const [currentView, setCurrentView] = useState<'home' | 'programs' | 'stories' | 'login' | 'student' | 'coordinator' | 'officer'>('home');
   const [programs, setPrograms] = useState<Program[]>(mockPrograms);
   const [registeredStudents, setRegisteredStudents] = useState<RegisteredStudent[]>([
     {
@@ -64,6 +65,38 @@ function App() {
 
   // Reports keyed by studentId
   const [studentReports, setStudentReports] = useState<Record<string, StudentReport>>({});
+
+  // STORIES state: batches -> albums -> media
+  const [storyBatches, setStoryBatches] = useState<StoryBatch[]>([{
+    id: 'batch-2024',
+    name: '2024-25 Batch',
+    createdAt: new Date().toISOString(),
+    featuredMediaIds: [],
+    albums: [
+      {
+        id: 'album-1',
+        name: 'Orientation Program',
+        createdAt: new Date().toISOString(),
+        media: []
+      }
+    ]
+  }]);
+  const [currentBatchId, setCurrentBatchId] = useState<string>('batch-2024');
+
+  // Department management
+  const [departments, setDepartments] = useState<Department[]>([
+    { id: 'dept-1', name: 'Mathematics', isActive: true, createdAt: new Date().toISOString() },
+    { id: 'dept-2', name: 'Physics', isActive: true, createdAt: new Date().toISOString() },
+    { id: 'dept-3', name: 'Chemistry', isActive: true, createdAt: new Date().toISOString() },
+    { id: 'dept-4', name: 'Microbiology', isActive: true, createdAt: new Date().toISOString() },
+    { id: 'dept-5', name: 'History', isActive: true, createdAt: new Date().toISOString() },
+    { id: 'dept-6', name: 'English', isActive: true, createdAt: new Date().toISOString() },
+    { id: 'dept-7', name: 'ASM', isActive: true, createdAt: new Date().toISOString() },
+    { id: 'dept-8', name: 'BBA', isActive: true, createdAt: new Date().toISOString() },
+    { id: 'dept-9', name: 'BCOM', isActive: true, createdAt: new Date().toISOString() },
+    { id: 'dept-10', name: 'Computer Science', isActive: true, createdAt: new Date().toISOString() },
+    { id: 'dept-11', name: 'Economics', isActive: true, createdAt: new Date().toISOString() },
+  ]);
 
   // Program Officer credentials (hardcoded for demo)
   const [officerCredentials, setOfficerCredentials] = useState({ id: 'OFFICER001', password: 'NSS@OFFICER2025' });
@@ -293,10 +326,9 @@ function App() {
     ));
   };
 
-  const handleAddStudent = (studentData: Omit<RegisteredStudent, 'id' | 'createdAt'>) => {
+  const handleAddStudent = (studentData: Omit<RegisteredStudent, 'createdAt'>) => {
     const newStudent: RegisteredStudent = {
       ...studentData,
-      id: (Math.floor(Math.random() * 900) + 100).toString(), // Generate 3-digit ID
       createdAt: new Date().toISOString(),
     };
     setRegisteredStudents(prev => [...prev, newStudent]);
@@ -319,7 +351,7 @@ function App() {
     ));
   };
 
-  const handleEditStudent = (id: string, updates: { name: string; department: string; password: string }) => {
+  const handleEditStudent = (id: string, updates: { name: string; department: string; password: string; profileImageUrl?: string }) => {
     setRegisteredStudents(prev => prev.map(student =>
       student.id === id ? { ...student, ...updates } : student
     ));
@@ -353,12 +385,83 @@ function App() {
   const handleUpdateOfficerPassword = (newPassword: string) => {
     setOfficerCredentials(prev => ({ ...prev, password: newPassword }));
   };
+
+  // Department management functions
+  const handleAddDepartment = (name: string) => {
+    const newDepartment: Department = {
+      id: 'dept-' + Date.now(),
+      name,
+      isActive: true,
+      createdAt: new Date().toISOString(),
+    };
+    setDepartments(prev => [...prev, newDepartment]);
+  };
+
+  const handleEditDepartment = (id: string, newName: string) => {
+    const oldDepartment = departments.find(d => d.id === id);
+    if (!oldDepartment) return;
+
+    // Update department name
+    setDepartments(prev => prev.map(d => 
+      d.id === id ? { ...d, name: newName } : d
+    ));
+
+    // Propagate department name change to all students
+    setRegisteredStudents(prev => prev.map(student => 
+      student.department === oldDepartment.name 
+        ? { ...student, department: newName }
+        : student
+    ));
+  };
+
+  const handleToggleDepartment = (id: string) => {
+    setDepartments(prev => prev.map(d => 
+      d.id === id ? { ...d, isActive: !d.isActive } : d
+    ));
+  };
   const renderCurrentView = () => {
     switch (currentView) {
       case 'home':
         return <HomePage programs={programs} />;
       case 'programs':
         return <ProgramsPage programs={programs} />;
+      case 'stories':
+        if (isLoggedIn) {
+          const StoriesPage = React.lazy(() => import('./components/StoriesPage'));
+          return (
+            <React.Suspense fallback={<div className="p-6">Loading...</div>}>
+              <StoriesPage
+                batches={storyBatches}
+                currentBatchId={currentBatchId}
+                setCurrentBatchId={setCurrentBatchId}
+                canManage={currentUser?.type === 'coordinator' || currentUser?.type === 'officer'}
+                isOfficer={currentUser?.type === 'officer'}
+                onCreateBatch={(name) => {
+                  const newBatch: StoryBatch = { id: 'batch-' + Date.now(), name, albums: [], featuredMediaIds: [], createdAt: new Date().toISOString() };
+                  setStoryBatches(prev => [newBatch, ...prev]);
+                  setCurrentBatchId(newBatch.id);
+                }}
+                onCreateAlbum={(batchId, name) => {
+                  setStoryBatches(prev => prev.map(b => b.id === batchId ? { ...b, albums: [{ id: 'album-' + Date.now(), name, media: [], createdAt: new Date().toISOString() }, ...b.albums] } : b));
+                }}
+                onDeleteMedia={(batchId, albumId, mediaId) => {
+                  setStoryBatches(prev => prev.map(b => b.id === batchId ? { ...b, albums: b.albums.map(a => a.id === albumId ? { ...a, media: a.media.filter(m => m.id !== mediaId) } : a), featuredMediaIds: b.featuredMediaIds.filter(id => id !== mediaId) } : b));
+                }}
+                onAddMedia={(batchId, albumId, files) => {
+                  const newItems: StoryMediaItem[] = files.map(f => ({ id: 'media-' + Date.now() + '-' + Math.random().toString(36).slice(2,8), type: f.type.startsWith('video') ? 'video' : 'image', url: URL.createObjectURL(f), title: f.name, createdAt: new Date().toISOString() }));
+                  setStoryBatches(prev => prev.map(b => b.id === batchId ? { ...b, albums: b.albums.map(a => a.id === albumId ? { ...a, media: [...newItems, ...a.media] } : a) } : b));
+                }}
+                onToggleFeatured={(batchId, mediaId) => {
+                  setStoryBatches(prev => prev.map(b => b.id === batchId ? { ...b, featuredMediaIds: b.featuredMediaIds.includes(mediaId) ? b.featuredMediaIds.filter(id => id !== mediaId) : [...b.featuredMediaIds, mediaId] } : b));
+                }}
+                onMergeCurrentAlbumToSingle={(batchId) => {
+                  // No-op placeholder; UI will just present action confirmation
+                }}
+              />
+            </React.Suspense>
+          );
+        }
+        return <LoginPage onLogin={handleLogin} onBack={() => setCurrentView('home')} />;
       case 'login':
         return <LoginPage onLogin={handleLogin} onBack={() => setCurrentView('home')} />;
       case 'student':
@@ -391,6 +494,7 @@ function App() {
             <ProgramOfficerPortal
               students={registeredStudents}
               coordinators={coordinators}
+              departments={departments}
               onAddStudent={handleAddStudent}
               onAddCoordinator={handleAddCoordinator}
               onToggleCoordinatorAccess={handleToggleCoordinatorAccess}
@@ -399,6 +503,9 @@ function App() {
               onUpdateOfficerPassword={handleUpdateOfficerPassword}
               onEditStudent={handleEditStudent}
               onEditCoordinator={handleEditCoordinator}
+              onAddDepartment={handleAddDepartment}
+              onEditDepartment={handleEditDepartment}
+              onToggleDepartment={handleToggleDepartment}
               studentReports={studentReports}
               programs={programs}
               onAddStudentActivity={(studentId, activity) => {

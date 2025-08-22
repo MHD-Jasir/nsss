@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { Calendar, LogIn, LogOut, Menu, X } from 'lucide-react';
 
 interface HeaderProps {
-  currentView: 'home' | 'programs' | 'login' | 'student' | 'coordinator' | 'officer';
-  onViewChange: (view: 'home' | 'programs' | 'login' | 'student' | 'coordinator' | 'officer') => void;
+  currentView: 'home' | 'programs' | 'stories' | 'login' | 'student' | 'coordinator' | 'officer';
+  onViewChange: (view: 'home' | 'programs' | 'stories' | 'login' | 'student' | 'coordinator' | 'officer') => void;
   isLoggedIn?: boolean;
   onLogout?: () => void;
   userInfo?: { name: string; type: string };
@@ -60,18 +60,30 @@ export const Header: React.FC<HeaderProps> = ({
               Home
             </button>
             
-            {/* Show Programs button only when NOT logged in */}
-            {!isLoggedIn && (
+            {/* Programs (public) */}
+            <button
+              onClick={() => onViewChange('programs')}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                currentView === 'programs'
+                  ? 'bg-blue-700 text-white shadow-md'
+                  : 'text-gray-600 hover:text-blue-700 hover:bg-blue-50'
+              }`}
+            >
+              <Calendar size={18} />
+              <span>Programs</span>
+            </button>
+
+            {/* STORIES (only when logged in) */}
+            {isLoggedIn && (
               <button
-                onClick={() => onViewChange('programs')}
+                onClick={() => onViewChange('stories')}
                 className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
-                  currentView === 'programs'
+                  currentView === 'stories'
                     ? 'bg-blue-700 text-white shadow-md'
                     : 'text-gray-600 hover:text-blue-700 hover:bg-blue-50'
                 }`}
               >
-                <Calendar size={18} />
-                <span>Programs</span>
+                <span>Stories</span>
               </button>
             )}
             
